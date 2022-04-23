@@ -1,0 +1,4 @@
+src/*.o
+src/raylib_game.html
+src/raylib_game.data
+src/raylib_game.js
