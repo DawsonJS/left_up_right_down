@@ -1,5 +1,4 @@
-/**********************************************************************************************
-*
+/********************************************************************************************** *
 *   raylib - Advance Game template
 *
 *   Gameplay Screen Functions Definitions (Init, Update, Draw, Unload)
@@ -26,6 +25,8 @@
 #include "screens.h"
 #include <stdlib.h>
 #include <time.h>
+#include <math.h>
+#include <string.h>
 
 #define SCALAR 2
 
@@ -56,7 +57,8 @@ typedef enum _PlayerState {
     IDLE,
     FALL,
     WALKING,
-    GROUNDED
+    GROUNDED,
+    ROTATING
 } PlayerState;
 
 typedef enum _PlayerDirection {
@@ -75,7 +77,6 @@ typedef struct _PlayerSheets {
 typedef struct _Player {
     Vector2 position;
     Vector2 velocity;
-    float fall_nought;
     PlayerState state;
     PlayerDirection direction;
     int width;
@@ -107,19 +108,19 @@ void InitGameplayScreen(void)
     for (int i = 0; i < 3; i++) {
         ImageResize(&(tile_texture_images[i]), tile_texture_images[i].width * SCALAR, tile_texture_images[i].height * SCALAR);
     }
-    player = (Player) {(Vector2){.x = GetScreenWidth() / 2, .y = GetScreenHeight() / 2}, (Vector2){0.0f, 0.0f}, 0.0f, IDLE, RIGHT, 16 * SCALAR, 16 * SCALAR};
+    player = (Player) {(Vector2){.x = GetScreenWidth() - 2 * (16 * SCALAR), .y = GetScreenHeight() / 2}, (Vector2){0.0f, 0.0f}, IDLE, RIGHT, 16 * SCALAR, 16 * SCALAR};
     playerSprite = (PlayerSheets){.idle = LoadTextureFromImage(sprite_sheet_images[0]),
                                   .horizontal = LoadTextureFromImage(sprite_sheet_images[1]),
                                   .fall = LoadTextureFromImage(sprite_sheet_images[2]),
                                   .grounded = LoadTextureFromImage(sprite_sheet_images[3])};
     ground = (Tile){.texture = LoadTextureFromImage(tile_texture_images[0]), .type = GROUND};
     room = (Room){.tiles = {  1, 1, 1, 1, 1, 1, 1, 1,
-                        0, 0, 0, 0, 0, 0, 0, 0,
-                        0, 0, 0, 0, 0, 0, 0, 0,
-                        0, 0, 0, 0, 0, 0, 0, 0,
-                        0, 0, 0, 0, 0, 0, 0, 0,
-                        0, 0, 0, 0, 0, 0, 0, 0,
-                        0, 0, 0, 0, 0, 0, 0, 0,
+                        1, 0, 0, 0, 0, 0, 0, 1,
+                        1, 0, 0, 0, 0, 0, 0, 1,
+                        1, 0, 0, 0, 0, 1, 1, 1,
+                        1, 0, 0, 0, 0, 0, 0, 1,
+                        1, 0, 0, 0, 0, 0, 0, 1,
+                        1, 0, 0, 0, 0, 0, 0, 1,
                         1, 1, 1, 1, 1, 1, 1, 1}};
     framesCounter = 0;
     finishScreen = 0;
@@ -133,40 +134,90 @@ void InitGameplayScreen(void)
     srand(time(NULL));
 }
 
-bool CheckCollision(void) {
-    bool result = false;
-    if (room.tiles[(int)(player.position.y / 32) + 1][(int)(player.position.x / 32)] == GROUND && player.position.y <= (((int)(player.position.y / 32) + 1) * 32) - player.height) {
-        result = true;
+bool CheckCollisionY(void) {
+    int left_tile = player.position.x / 32;
+    int right_tile = (player.position.x / 32) + 1;
+    int bottom_tile = (player.position.y / 32)+ 1;
+
+    if(left_tile < 0) left_tile = 0;
+    if(right_tile > 7) right_tile = 7;
+    if(bottom_tile > 7) bottom_tile = 7;
+
+    bool any_collision = false;
+    for(int j = left_tile; j <= right_tile; j++)
+    {
+        TileType t = room.tiles[bottom_tile][j];
+        if (t == GROUND && ((player.position.x < j * 32) || ((player.position.x + player.width) > j * 32))) {
+            any_collision = true;
+            if ((player.position.y + player.height) > (bottom_tile * 32)) {
+                player.state = GROUNDED;
+                groundedTime = GetTime();
+                player.velocity.y = 0.0f;
+                player.position.y = (bottom_tile - 1) * 32;
+            }
+        } else {
+            player.state = FALL;
+        }
     }
-    return result;
+    return any_collision;
 }
 
+bool CheckCollisionX(void) {
+    int left_tile = player.position.x / 32;
+    int right_tile = (player.position.x / 32) + 1;
+    int top_tile = player.position.y / 32;
+
+    if(left_tile < 0) left_tile = 0;
+    if(right_tile > 7) right_tile = 7;
+    if(top_tile < 0) top_tile = 0;
+
+    bool any_collision = false;
+    for(int j = left_tile; j <= right_tile; j++)
+    {
+        TileType t = room.tiles[top_tile][j];
+        if (t == GROUND) {
+            any_collision = true;
+        }
+    }
+    return any_collision;
+}
+
+void RotateRoom(void) {
+    Vector2 oldposition = player.position;
+    float cosine = cos(90.0 * PI / 180.0);
+    float sine = sin(90.0 * PI / 180.0);
+
+    TileType old_tiles[8][8];
+
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            old_tiles[i][j] = room.tiles[i][j];
+            room.tiles[i][j] = AIR;
+        }
+    }
+
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            int new_row = floor(((float)j - 3.5) * sine + ((float)i - 3.5) * cosine + 3.5);
+            int new_col = floor(((float)j - 3.5) * cosine - ((float)i - 3.5) * sine + 3.5);
+            room.tiles[new_row][new_col] = old_tiles[i][j];
+        }
+    }
+
+    player.position.x = (oldposition.x - (GetScreenWidth() / 2)) * cos((float)(90 * PI / 180)) - (oldposition.y - (GetScreenHeight() / 2)) * sin((float)(90 * PI / 180)) + (GetScreenWidth() / 2);
+    player.position.y = (oldposition.x - (GetScreenWidth() / 2)) * sin((float)(90 * PI / 180)) + (oldposition.y - (GetScreenHeight() / 2)) * cos((float)(90 * PI / 180)) + (GetScreenHeight() / 2);
+}
 
 // Gameplay Screen Update logic
 void UpdateGameplayScreen(void)
 {
-    // TODO: Update GAMEPLAY screen variables here!
-    static PlayerState lastState = IDLE;
-
-    if (player.position.y < GetScreenHeight() - player.height && !CheckCollision()) {
-        player.fall_nought = GetTime();
-        player.position.y += player.velocity.y;
-        if ((player.position.y >= GetScreenHeight() - player.height) || CheckCollision()) {
-            player.position.y = GetScreenHeight() - player.height;
-            player.velocity.y = 0.0f;
-            player.fall_nought = 0.0f;
-            player.state = GROUNDED;
-            groundedTime = GetTime();
-        }
+    player.position.x += player.velocity.x;
+    if (CheckCollisionX()) {
+        player.position.x -= player.velocity.x;
     }
-
-    if (player.position.x <= GetScreenWidth() - player.width && player.position.x >= 0) {
-        player.position.x += player.velocity.x;
-        if (player.position.x > GetScreenWidth() - player.width) {
-            player.position.x = GetScreenWidth() - player.width;
-        } else if (player.position.x < 0) {
-            player.position.x = 0;
-        }
+    player.position.y += player.velocity.y;
+    if (CheckCollisionY()) {
+        player.position.y -= player.velocity.y;
     }
     // Press enter or tap to change to ENDING screen
     if (IsKeyPressed(KEY_ENTER) || IsGestureDetected(GESTURE_TAP))
@@ -174,39 +225,29 @@ void UpdateGameplayScreen(void)
         finishScreen = 1;
         PlaySound(fxCoin);
     }
-    if (IsKeyPressed(KEY_R)) // Reset physics input
-    {
-        player = (Player) {(Vector2){.x = GetScreenWidth() / 2, .y = GetScreenHeight() / 2}, (Vector2){0.0f, 0.0f}, 0.0f, IDLE, RIGHT, 16 * SCALAR, 16 * SCALAR};
-    }
-
-    // Gravity
-    if (player.state == FALL) player.velocity.y += 9.8f * GetFrameTime();
-    // Horizontal Player Movement
-    if (IsKeyDown(KEY_RIGHT) && player.state != GROUNDED) {
-        player.direction = RIGHT;
-        player.velocity.x = 0.5f * 16;
-    } else if (IsKeyDown(KEY_LEFT) && player.state != GROUNDED) {
+    if (IsKeyDown(KEY_LEFT)) {
+        if (player.state == IDLE) player.state = WALKING;
         player.direction = LEFT;
-        player.velocity.x = -0.5f * 16;
+        player.velocity.x = -2.0f;
+    } else if (IsKeyDown(KEY_RIGHT)) {
+        if (player.state == IDLE) player.state = WALKING;
+        player.direction = RIGHT;
+        player.velocity.x = 2.0f;
     } else {
+        if (player.state == WALKING) player.state = IDLE;
         player.velocity.x = 0.0f;
     }
 
-    // Update player state
-    if (player.position.y < GetScreenHeight() - player.height) {
-        lastState = (player.state == FALL) ? lastState : player.state;
-        player.state = FALL;
-    } else if (player.state == GROUNDED) {
-        lastState = (player.state == GROUNDED) ? lastState : player.state;
-        player.state = GROUNDED;
-    } else if (player.velocity.x != 0) {
-        lastState = (player.state == WALKING) ? lastState : player.state;
-        player.state = WALKING;
-    } else {
-        lastState = (player.state == IDLE) ? lastState : player.state;
-        player.state = IDLE;
+    if (player.state == FALL) player.velocity.y += 9.8f * GetFrameTime();
+    
+    if (IsKeyPressed(KEY_R)) {
+        RotateRoom();
     }
 
+    if (IsKeyPressed(KEY_B)) // Reset physics input
+    {
+        player = (Player) {(Vector2){.x = GetScreenWidth() - 2 * (16 * SCALAR), .y = GetScreenHeight() / 2}, (Vector2){-0.1f, 0.0f}, IDLE, RIGHT, 16 * SCALAR, 16 * SCALAR};
+    }
 }
 
 // Gameplay Screen Draw logic
@@ -218,9 +259,6 @@ void DrawGameplayScreen(void)
 
     DrawFPS(GetScreenWidth() - 90, GetScreenHeight() - 30);
     // TODO: Draw GAMEPLAY screen here!
-    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), PURPLE);
-    DrawTextEx(font, "GAMEPLAY SCREEN", (Vector2){ 20, 10 }, font.baseSize*3, 4, MAROON);
-    DrawText("PRESS ENTER or TAP to JUMP to ENDING SCREEN", 60, 220, 20, MAROON);
     DrawRectangle(player.position.x, player.position.y, player.width, player.height, RED);
     switch (player.state) {
         case IDLE:
@@ -256,21 +294,38 @@ void DrawGameplayScreen(void)
                 player.state = IDLE;
             }
             break;
+        case ROTATING:
+            DrawTextureRec(playerSprite.idle, 
+                (Rectangle){0.0f,
+                0.0f, player.direction * (float)(playerSprite.idle.width / 5), 
+                (float)(playerSprite.idle.height)}, player.position, WHITE);
+            break;
     }
     if (player.state != GROUNDED) frame++;
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             switch (room.tiles[i][j]) {
                 case GROUND:
-                    // DrawTextureRec(ground.texture, 
-                        // (Rectangle){(float)(ground.texture.width / 15) * (rand() % 15),
-                        // 0.0f, (float)(ground.texture.width / 15), (float)(ground.texture.height)}, (Vector2){.x = j * 32, .y = i * 32}, WHITE);
+                    DrawTextureRec(ground.texture, 
+                        (Rectangle){(float)(ground.texture.width / 15) * (rand() % 15),
+                        0.0f, (float)(ground.texture.width / 15), (float)(ground.texture.height)}, (Vector2){.x = j * 32, .y = i * 32}, WHITE);
                      break;
                 case STALAGMITE:
                     break;
                 case STALACTITE:
                     break;
              }
+            if (j == (int)(player.position.x / 32) && i == (int)(player.position.y / 32)) {
+                DrawRectangleLines(j * 32, i * 32, 32, 32, RED);
+            } else if (j == (int)((player.position.x / 32) + 1) && i == (int)((player.position.y / 32) + 1)) {
+                DrawRectangleLines(j * 32, i * 32, 32, 32, RED);
+            } else if (j == (int)(player.position.x / 32) && i == (int)((player.position.y / 32) + 1)) {
+                DrawRectangleLines(j * 32, i * 32, 32, 32, RED);
+            } else if (j == (int)((player.position.x / 32) + 1) && i == (int)(player.position.y / 32)) {
+                DrawRectangleLines(j * 32, i * 32, 32, 32, RED);
+            } else {
+                DrawRectangleLines(j * 32, i * 32, 32, 32, WHITE);
+            }
         }
     }
 }

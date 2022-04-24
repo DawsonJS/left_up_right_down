@@ -65,7 +65,7 @@ int main(void)
     SetConfigFlags(FLAG_MSAA_4X_HINT);
     InitWindow(screenWidth, screenHeight, "raylib game template");
 
-    InitAudioDevice();      // Initialize audio device
+    // InitAudioDevice();      // Initialize audio device
     InitPhysics();
 
     // Load global data (assets that must be available in all screens, i.e. font)
@@ -80,9 +80,9 @@ int main(void)
     currentScreen = TITLE;
     InitTitleScreen();
 
-// #if defined(PLATFORM_WEB)
-//     emscripten_set_main_loop(UpdateDrawFrame, 60, 1);
-// #else
+#if defined(PLATFORM_WEB)
+    emscripten_set_main_loop(UpdateDrawFrame, 60, 1);
+#else
     SetTargetFPS(60);       // Set our game to run at 60 frames-per-second
     //--------------------------------------------------------------------------------------
 
@@ -91,7 +91,7 @@ int main(void)
     {
         UpdateDrawFrame();
     }
-// #endif
+#endif
 
     // De-Initialization
     //--------------------------------------------------------------------------------------

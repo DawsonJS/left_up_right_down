@@ -33,12 +33,12 @@ PROJECT_NAME          ?= raylib_game
 PROJECT_VERSION       ?= 1.0
 PROJECT_BUILD_PATH    ?= .
 
-RAYLIB_PATH           ?= /home/dee/docs/builds/raylib
+RAYLIB_PATH           ?= /Users/dawsonschraiber/Documents/builds/raylib
 
 # Locations of raylib.h and libraylib.a/libraylib.so
 # NOTE: Those variables are only used for PLATFORM_OS: LINUX, BSD
-RAYLIB_INCLUDE_PATH   ?= /home/dee/docs/builds/raylib/src
-RAYLIB_LIB_PATH       ?= /home/dee/docs/builds/raylib/src
+RAYLIB_INCLUDE_PATH   ?= /Users/dawsonschraiber/Documents/builds/raylib/src
+RAYLIB_LIB_PATH       ?= /Users/dawsonschraiber/Documents/builds/raylib/src
 
 # Library type compilation: STATIC (.a) or SHARED (.so/.dll)
 RAYLIB_LIBTYPE        ?= STATIC
@@ -51,7 +51,7 @@ BUILD_MODE            ?= RELEASE
 USE_WAYLAND_DISPLAY   ?= FALSE
 
 # PLATFORM_WEB: Default properties
-BUILD_WEB_ASYNCIFY    ?= TRUE
+BUILD_WEB_ASYNCIFY    ?= FALSE
 BUILD_WEB_SHELL       ?= minshell.html
 BUILD_WEB_HEAP_SIZE   ?= 134217728
 BUILD_WEB_RESOURCES   ?= TRUE
@@ -129,7 +129,7 @@ RAYLIB_RELEASE_PATH 	?= $(RAYLIB_PATH)/src
 
 ifeq ($(PLATFORM),PLATFORM_WEB)
     # Emscripten required variables
-    EMSDK_PATH         ?= /home/dee/docs/builds/emsdk
+    EMSDK_PATH         ?= /Users/dawsonschraiber/Documents/builds/emsdk
     EMSCRIPTEN_PATH    ?= $(EMSDK_PATH)/upstream/emscripten
     CLANG_PATH          = $(EMSDK_PATH)/upstream/bin
     PYTHON_PATH         = $(EMSDK_PATH)/python/3.9.2-1_64bit
