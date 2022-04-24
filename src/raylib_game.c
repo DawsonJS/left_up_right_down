@@ -12,8 +12,11 @@
 *
 ********************************************************************************************/
 
-#include "/home/dee/docs/builds/raylib/src/raylib.h"
+#include "raylib.h"
 #include "screens.h"    // NOTE: Declares global (extern) variables and screens functions
+#define PHYSAC_IMPLEMENTATION
+#define PHYSAC_NO_THREADS
+#include "physac.h"
 
 #if defined(PLATFORM_WEB)
     #include <emscripten/emscripten.h>
@@ -31,8 +34,8 @@ Sound fxCoin = { 0 };
 //----------------------------------------------------------------------------------
 // Local Variables Definition (local to this module)
 //----------------------------------------------------------------------------------
-static const int screenWidth = 800;
-static const int screenHeight = 450;
+static const int screenWidth = 256;
+static const int screenHeight = 256;
 
 // Required variables to manage screen transitions (fade-in, fade-out)
 static float transAlpha = 0.0f;
@@ -59,9 +62,11 @@ int main(void)
 {
     // Initialization
     //---------------------------------------------------------
+    SetConfigFlags(FLAG_MSAA_4X_HINT);
     InitWindow(screenWidth, screenHeight, "raylib game template");
 
     InitAudioDevice();      // Initialize audio device
+    InitPhysics();
 
     // Load global data (assets that must be available in all screens, i.e. font)
     font = LoadFont("resources/mecha.png");
@@ -72,12 +77,12 @@ int main(void)
     PlayMusicStream(music);
 
     // Setup and init first screen
-    currentScreen = LOGO;
-    InitLogoScreen();
+    currentScreen = TITLE;
+    InitTitleScreen();
 
-#if defined(PLATFORM_WEB)
-    emscripten_set_main_loop(UpdateDrawFrame, 60, 1);
-#else
+// #if defined(PLATFORM_WEB)
+//     emscripten_set_main_loop(UpdateDrawFrame, 60, 1);
+// #else
     SetTargetFPS(60);       // Set our game to run at 60 frames-per-second
     //--------------------------------------------------------------------------------------
 
@@ -86,7 +91,7 @@ int main(void)
     {
         UpdateDrawFrame();
     }
-#endif
+// #endif
 
     // De-Initialization
     //--------------------------------------------------------------------------------------
