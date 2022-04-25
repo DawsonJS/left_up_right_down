@@ -44,6 +44,7 @@ void InitTitleScreen(void)
 {
     // TODO: Initialize TITLE screen variables here!
     Image logo_image = LoadImage("resources/art/TitleCard.png");
+    ImageResizeNN(&logo_image, logo_image.width * (SCALAR / 2), logo_image.height * (SCALAR / 2));
     titleMusic = LoadMusicStream("resources/music/TitleSong.wav");
     logo = LoadTextureFromImage(logo_image);
     PlayMusicStream(titleMusic);

@@ -2,11 +2,11 @@
 #define ROOMS_H
 
 #include "raylib.h"
+#include "screens.h"
 
-#define SCALAR 2
-#define TILE_SIZE 32
+#define TILE_SIZE (SCALAR * 16)
 #define ROOM_SIZE 10
-#define NUM_ROOMS 2
+#define NUM_ROOMS 4
 #define BACKGROUND_SIZE 64
 
 typedef enum _TileType {

@@ -39,9 +39,8 @@ extern Font font;
 extern Music music;
 extern Sound fxCoin;
 
-#define SCALAR 2
-#define TILE_SIZE 32
-#define ROOM_SIZE 10
+#define SCALAR 4
+
 
 #ifdef __cplusplus
 extern "C" {            // Prevents name mangling of functions

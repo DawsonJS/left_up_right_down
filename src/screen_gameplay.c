@@ -37,11 +37,13 @@ static int next_room = 0;
 
 #define MAX_OXYGEN 100
 
+bool CheckCollision(void);
+
 typedef enum _PlayerState {
-    IDLE,
-    FALL,
-    WALKING,
-    GROUNDED,
+    IDLE = 0,
+    FALL = 2,
+    WALKING = 1,
+    GROUNDED = 3,
     ROTATING
 } PlayerState;
 
@@ -68,7 +70,6 @@ typedef struct _Player {
     float oxygen;
 } Player;
 
-PlayerSheets playerSprite;
 Player player;
 Room room;
 Tile ground;
@@ -76,6 +77,7 @@ Tile stalagmite;
 Tile stalactite;
 Tile rail;
 
+Texture2D sprite_sheet;
 Texture2D oxygen_bar;
 Texture2D background;
 
@@ -93,40 +95,30 @@ Sound deathSound;
 // Gameplay Screen Initialization logic
 void InitGameplayScreen(void)
 {
-    Image sprite_sheet_images[4] = {LoadImage("resources/art/Miner_Idle-Sheet.png"),
-                                    LoadImage("resources/art/Miner_Walk-Sheet.png"),
-                                    LoadImage("resources/art/Miner_Fall-Sheet.png"),
-                                    LoadImage("resources/art/Miner_Getup-Sheet.png")};
+    Image sprite_sheet_image = LoadImage("resources/art/Miner-Sheet.png");
     Image tile_texture_images[3] = {LoadImage("resources/art/Ground_Tiles-Sheet.png"),
                                     LoadImage("resources/art/Stalagmite_Rotate-Sheet.png"),
                                     LoadImage("resources/art/Stalactite_Rotate-Sheet.png")};
 
     Image oxygen_bar_image = LoadImage("resources/art/Oxygen_Bar-Sheet.png");
     Image background_image = LoadImage("resources/art/Backgrounds-Sheet.png");
-    for (int i = 0; i < 4; i++) {
-        ImageResizeNN(&(sprite_sheet_images[i]), sprite_sheet_images[i].width * SCALAR, sprite_sheet_images[i].height * SCALAR);
-    }
+    ImageResizeNN(&sprite_sheet_image, sprite_sheet_image.width * SCALAR, sprite_sheet_image.height * SCALAR);
     for (int i = 0; i < 3; i++) {
         ImageResizeNN(&(tile_texture_images[i]), tile_texture_images[i].width * SCALAR, tile_texture_images[i].height * SCALAR);
     }
-
-    playerSprite = (PlayerSheets){.idle = LoadTextureFromImage(sprite_sheet_images[0]),
-                                  .horizontal = LoadTextureFromImage(sprite_sheet_images[1]),
-                                  .fall = LoadTextureFromImage(sprite_sheet_images[2]),
-                                  .grounded = LoadTextureFromImage(sprite_sheet_images[3])};
+    ImageResizeNN(&oxygen_bar_image, oxygen_bar_image.width * (SCALAR / 2), oxygen_bar_image.height * (SCALAR / 2));
+    sprite_sheet = LoadTextureFromImage(sprite_sheet_image);
     ground = (Tile){.texture = LoadTextureFromImage(tile_texture_images[0]), .type = GROUND};
     stalagmite = (Tile){.texture = LoadTextureFromImage(tile_texture_images[1]), .type = STALAGMITE};
     stalactite = (Tile){.texture = LoadTextureFromImage(tile_texture_images[2]), .type = STALACTITE};
-    player = (Player) {(Vector2){.x = 0, .y = 0}, (Vector2){0.0f, 0.0f}, IDLE, RIGHT, 16 * SCALAR, 16 * SCALAR, MAX_OXYGEN};
+    player = (Player) {(Vector2){.x = 0, .y = 0}, (Vector2){0.0f, 0.0f}, IDLE, RIGHT, TILE_SIZE, TILE_SIZE, MAX_OXYGEN};
     oxygen_bar = LoadTextureFromImage(oxygen_bar_image);
     background = LoadTextureFromImage(background_image);
     room.rotations = 0;
     next_room = LoadRoom(&room, next_room);
     finishScreen = 0;
     SetTargetFPS(60);
-    for (int i = 0; i < 4; i++) {
-        UnloadImage(sprite_sheet_images[i]);
-    }
+    UnloadImage(sprite_sheet_image);
     for (int i = 0; i < 3; i++) {
         UnloadImage(tile_texture_images[i]);
     }
@@ -154,10 +146,59 @@ void PlayerReset() {
     player.position.x = room.start.x * TILE_SIZE;
     player.position.y = room.start.y * TILE_SIZE;
     player.oxygen = MAX_OXYGEN;
+    CheckCollision();
 }
 
 void PlayerDeath() {
+    if (!IsSoundPlaying(deathSound)) {
+        PlaySound(deathSound);
+    }
     PlayerReset();
+}
+
+void PlayerRotate() {
+    float sine = sin(90.0 * PI / 180.0);
+    float cosine = cos(90.0 * PI / 180.0);
+    Vector2 oldposition = player.position;
+
+    Vector2 center = {.x = (ROOM_SIZE * TILE_SIZE / 2), .y = (ROOM_SIZE * TILE_SIZE / 2)};
+
+    Vector2 newposition;
+    newposition.x = (oldposition.x - center.x) * cosine - (oldposition.y - center.y) * sine + center.x;
+    newposition.y = (oldposition.x - center.x) * sine + (oldposition.y - center.y) * cosine + center.y;
+
+    player.position.x = newposition.x;
+    player.position.y = newposition.y - player.height;
+    CheckCollision();
+    if (!IsSoundPlaying(rotatingSound)) {
+        PlaySound(rotatingSound);
+    }
+}
+
+bool IsEvent(TileType tile) {
+    bool result = true;
+    switch (tile) {
+        /* case START:
+            result = false;
+            if (player.position.x == room.start.x && player.position.y == room.start.y) {
+                next_room = LoadRoom(&room, next_room - 1);
+                PlayerReset();
+                result = true;
+            }
+            break; */
+        case EXIT:
+            next_room = LoadRoom(&room, next_room);
+            PlayerReset();
+            break;
+        default:
+            result = false;
+            if (IsDeath(tile)) {
+                PlayerDeath();
+                result = true;
+            }
+            break;
+    }
+    return result;
 }
 
 bool CheckCollision(void) {
@@ -175,131 +216,57 @@ bool CheckCollision(void) {
     for (int i = top_tile; i <= bottom_tile; i++) {
         for(int j = left_tile; j <= right_tile; j++)
         {
-            TileType t = room.tiles[bottom_tile][j];
-            if ((player.position.x < j * TILE_SIZE) || ((player.position.x + player.width) > j * TILE_SIZE)) {
-                if (t == EXIT) {
-                    next_room = LoadRoom(&room, next_room);
-                    PlayerReset();
-                    return false;
-                } else if (t == START) {
-                    next_room = LoadRoom(&room, next_room);
-                    PlayerReset();
-                    return false;
-                } else if (IsDeath(t)) {
-                    PlayerDeath();
+            TileType t = room.tiles[i][j];
+            Rectangle tile = (Rectangle) {.x = j * TILE_SIZE, .y = i * TILE_SIZE, .width = TILE_SIZE, .height = TILE_SIZE};
+            Rectangle player_box = (Rectangle) {.x = player.position.x, .y = player.position.y, .width = player.width, .height = player.height};
+            if (CheckCollisionRecs(player_box, tile)) {
+                if (IsEvent(t)) {
                     return false;
                 } else if (IsSolid(t)) {
                     any_collision = true;
-                }
-            } else if ((player.position.y < i * TILE_SIZE) || ((player.position.y + player.height) > i * TILE_SIZE)) {
-                if (t == EXIT) {
-                    next_room = LoadRoom(&room, next_room);
-                    PlayerReset();
-                    return false;
-                } else if (t == START) {
-                    next_room = LoadRoom(&room, next_room);
-                    PlayerReset();
-                    return false;
-                } else if (IsDeath(t)) {
-                    PlayerDeath();
-                    return false;
-                } else if (IsSolid(t)) {
+                    Rectangle collide = GetCollisionRec(player_box, tile);
+                    if (collide.width < collide.height) {
+                        player.position.x += -1 * player.direction * collide.width;
+                    } else {
+                        if (!IsSoundPlaying(groundedSound)) {
+                            PlaySound(groundedSound);
+                        }
+                        player.position.y -= collide.height;
+                        player.state = GROUNDED;
+                        groundedTime = GetTime();
+                        player.velocity.y = 0.0f;
+                    }
+                } else if ((player.position.x > ((ROOM_SIZE * TILE_SIZE) - player.width)) || player.position.x < 0) {
                     any_collision = true;
+                    player.position.x -= player.velocity.x;
+                } else if (player.position.y > ((ROOM_SIZE * TILE_SIZE) - player.height)) {
+                    if (!IsSoundPlaying(groundedSound)) {
+                            PlaySound(groundedSound);
+                    }
+                    any_collision = true;
+                    player.position.y -= player.velocity.y;
+                    player.state = GROUNDED;
+                    groundedTime = GetTime();
+                    player.velocity.y = 0.0f;
                 }
             }
         }
     }
-    return any_collision;
-}
-
-
-bool CheckCollisionY(void) {
-    int left_tile = player.position.x / TILE_SIZE;
-    int right_tile = (player.position.x / TILE_SIZE) + 1;
-    int bottom_tile = (player.position.y / TILE_SIZE)+ 1;
-
-    if(left_tile < 0) left_tile = 0;
-    if(right_tile > ROOM_SIZE) right_tile = ROOM_SIZE;
-    if(bottom_tile > ROOM_SIZE) bottom_tile = ROOM_SIZE;
-
-    bool any_collision = false;
-    if (room.tiles[bottom_tile][left_tile] == EXIT || room.tiles[bottom_tile][right_tile] == EXIT) {
-        next_room = LoadRoom(&room, next_room);
-        PlayerReset();
-        return false;
-    }
-    if (room.tiles[bottom_tile][left_tile] == START || room.tiles[bottom_tile][right_tile] == START) {
-        next_room = LoadRoom(&room, next_room - 1);
-        PlayerReset();
-        return false;
-    }
-
-    if (IsDeath(room.tiles[bottom_tile][left_tile]) || IsDeath(room.tiles[bottom_tile][right_tile])) {
-        if (!IsSoundPlaying(deathSound)) {
-            PlaySound(deathSound);
-        }
-        PlayerDeath();
-        return false;
-    }
-    for(int j = left_tile; j <= right_tile; j++)
-    {
-        TileType t = room.tiles[bottom_tile][j];
-        if (IsSolid(t) && ((player.position.x < j * TILE_SIZE) || ((player.position.x + player.width) > j * TILE_SIZE))) {
-            any_collision = true;
-            if ((player.position.y + player.height) > (bottom_tile * TILE_SIZE)) {
-                if (!IsSoundPlaying(groundedSound)) {
-                    PlaySound(groundedSound);
-                }
-                player.state = GROUNDED;
-                groundedTime = GetTime();
-                player.velocity.y = 0.0f;
-                player.position.y = (bottom_tile - 1) * TILE_SIZE;
-            }
-        }
-    }
-    if (!any_collision) {
+    if (!any_collision && !IsSolid(room.tiles[bottom_tile][left_tile]) && !IsSolid(room.tiles[bottom_tile][right_tile])) {
         if (!IsSoundPlaying(fallingSound)) {
             PlaySound(fallingSound);
-        }
+        } 
         player.state = FALL;
+        player.velocity.y += 9.8f * GetFrameTime();
     }
-    return any_collision;
-}
-
-bool CheckCollisionX(void) {
-    int left_tile = player.position.x / TILE_SIZE;
-    int right_tile = (player.position.x / TILE_SIZE) + 1;
-    int top_tile = player.position.y / TILE_SIZE;
-
-    if(left_tile < 0) left_tile = 0;
-    if(right_tile > ROOM_SIZE) right_tile = ROOM_SIZE;
-    if(top_tile < 0) top_tile = 0;
-
-    bool any_collision = false;
-    if (room.tiles[top_tile][right_tile] == EXIT) {
-        next_room = LoadRoom(&room, next_room);
-        PlayerReset();
-        return false;
-    }
-
-    if (room.tiles[top_tile][right_tile] == START) {
-        next_room = LoadRoom(&room, next_room - 1);
-        PlayerReset();
-        return false;
-    }
-
-    if (IsDeath(room.tiles[top_tile][right_tile])) {
-        PlayerDeath();
-        return false;
-    }
-    for(int j = left_tile; j <= right_tile; j++)
-    {
-        TileType t = room.tiles[top_tile][j];
-        if (IsSolid(t)) {
-            if (player.state == ROTATING) {
-                player.velocity.x = (j == left_tile) ? 0.1f : -0.1f;
+    if (player.position.y / TILE_SIZE < 0) {
+        for (int i = 0; i < ROOM_SIZE; i++) {
+            for (int j = 0; j < ROOM_SIZE; j++) {
+                if (!IsSolid(room.tiles[i][j]) && !IsEvent(room.tiles[i][j])) {
+                    player.position.x = j * TILE_SIZE;
+                    player.position.y = i * TILE_SIZE;
+                }
             }
-            any_collision = true;
         }
     }
     return any_collision;
@@ -313,47 +280,36 @@ void UpdateGameplayScreen(void)
     }
     UpdateMusicStream(GameMusic);
     player.position.x += player.velocity.x;
-    if (CheckCollision()) {
-        player.position.x -= player.velocity.x;
-    }
-
+    CheckCollision();
     player.position.y += player.velocity.y;
-    player.state = FALL;
-    if (CheckCollision()) {
-        // player.position.y -= player.velocity.y;
-        if ((player.position.y + player.height) > (floor((player.position.y / TILE_SIZE) + 1) * TILE_SIZE)) {
-            player.state = GROUNDED;
-            groundedTime = GetTime();
-            player.velocity.y = 0.0f;
-            player.position.y = (floor(player.position.y / TILE_SIZE)) * TILE_SIZE;
-        }
-    }
+    CheckCollision();
     // Press enter or tap to change to ENDING screen
     if (IsKeyPressed(KEY_ENTER) || IsGestureDetected(GESTURE_TAP))
     {
         finishScreen = 1;
         PlaySound(fxCoin);
     }
+    // Update Velocities & PlayerState
     if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)) {
         if (player.state == IDLE) player.state = WALKING;
         player.direction = LEFT;
-        player.velocity.x = -2.0f;
+        player.velocity.x = -1.0f * SCALAR;
     } else if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) {
         if (player.state == IDLE) player.state = WALKING;
         player.direction = RIGHT;
-        player.velocity.x = 2.0f;
+        player.velocity.x = 1.0f * SCALAR;
     } else {
         if (player.state == WALKING) player.state = IDLE;
         player.velocity.x = 0.0f;
     }
 
-    if (player.state == FALL) player.velocity.y += 9.8f * GetFrameTime();
     
     if (IsKeyPressed(KEY_R)) {
         RotateRoom(&room);
+        PlayerRotate();
     }
 
-    player.oxygen = player.oxygen - GetFrameTime() * 10;
+    player.oxygen = player.oxygen - GetFrameTime() * 5;
     if (player.oxygen <= 0) {
         PlayerDeath();
     }
@@ -376,33 +332,31 @@ void DrawGameplayScreen(void)
     static int frame = 0;
     if (frame >= 40 && player.state != GROUNDED) frame = 0;
 
-    // DrawFPS(GetScreenWidth() - 90, GetScreenHeight() - 30);
-    // TODO: Draw GAMEPLAY screen here!
     switch (player.state) {
         case IDLE:
-            DrawTextureRec(playerSprite.idle, 
-                (Rectangle){(float)(playerSprite.idle.width / 5) * (frame / 8),
-                0.0f, player.direction * (float)(playerSprite.idle.width / 5), 
-                (float)(playerSprite.idle.height)}, player.position, WHITE);
+            DrawTextureRec(sprite_sheet, 
+                (Rectangle){TILE_SIZE * (frame / 8),
+                TILE_SIZE * player.state, player.direction * TILE_SIZE, 
+                TILE_SIZE}, player.position, WHITE);
             break;
         case WALKING:
-            DrawTextureRec(playerSprite.horizontal, 
-                (Rectangle){(float)(playerSprite.horizontal.width / 8) * (frame / 5),
-                0.0f, player.direction * (float)(playerSprite.horizontal.width / 8), 
-                (float)(playerSprite.horizontal.height)}, player.position, WHITE);
+            DrawTextureRec(sprite_sheet, 
+                (Rectangle){TILE_SIZE * (frame / 5),
+                TILE_SIZE * player.state, player.direction * TILE_SIZE, 
+                TILE_SIZE}, player.position, WHITE);
             break;
         case FALL:
-            DrawTextureRec(playerSprite.fall, 
-                (Rectangle){(float)(playerSprite.fall.width / 4) * (frame / 10),
-                0.0f, player.direction * (float)(playerSprite.fall.width / 4), 
-                (float)(playerSprite.fall.height)}, player.position, WHITE);
+            DrawTextureRec(sprite_sheet, 
+                (Rectangle){TILE_SIZE * (frame / 10),
+                TILE_SIZE * player.state, player.direction * TILE_SIZE, 
+                TILE_SIZE}, player.position, WHITE);
             break;
         case GROUNDED:
             if (frame >= 4) frame = 0;
-            DrawTextureRec(playerSprite.grounded, 
-                (Rectangle){(float)(playerSprite.grounded.width / 4) * frame,
-                0.0f, player.direction * (float)(playerSprite.grounded.width / 4), 
-                (float)(playerSprite.grounded.height)}, player.position, WHITE);
+            DrawTextureRec(sprite_sheet, 
+                (Rectangle){TILE_SIZE * frame, TILE_SIZE * player.state,
+                player.direction * TILE_SIZE, TILE_SIZE}, 
+                player.position, WHITE);
             if (GetTime() - groundedTime >= 0.25 || frame == 0) {
                 groundedTime = GetTime();
                 frame++;
@@ -413,10 +367,10 @@ void DrawGameplayScreen(void)
             }
             break;
         case ROTATING:
-            DrawTextureRec(playerSprite.idle, 
+            DrawTextureRec(sprite_sheet, 
                 (Rectangle){0.0f,
-                0.0f, player.direction * (float)(playerSprite.idle.width / 5), 
-                (float)(playerSprite.idle.height)}, player.position, WHITE);
+                0.0f, player.direction * TILE_SIZE, 
+                TILE_SIZE}, player.position, WHITE);
             break;
     }
     if (player.state != GROUNDED) frame++;
@@ -443,19 +397,12 @@ void DrawGameplayScreen(void)
                             (Vector2){.x = j * TILE_SIZE, .y = i * TILE_SIZE}, WHITE);
                     break;
             }
-            DrawRectangleLines(j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE, WHITE);
         }
 
-    }
-
-    for (int i = player.position.y / TILE_SIZE; i <= (player.position.y / TILE_SIZE) + 1; i++) {
-        for (int j = (player.position.x / TILE_SIZE); j <= (player.position.x / TILE_SIZE) + 1; j++) {
-            DrawRectangleLines(j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE, RED);
-        }
     }
 
     DrawTextureRec(oxygen_bar, (Rectangle){0.0f, 0.0f, (float)(oxygen_bar.width), (float)(oxygen_bar.height)}, (Vector2){.x = 0.0f, .y = 0.0f}, WHITE);
-    DrawRectangleRec((Rectangle){player.oxygen / MAX_OXYGEN * oxygen_bar.width, TILE_SIZE / 4 + 2, oxygen_bar.width - (player.oxygen / MAX_OXYGEN * oxygen_bar.width), TILE_SIZE / 2}, RED);
+    DrawRectangleRec((Rectangle){player.oxygen / MAX_OXYGEN * oxygen_bar.width, TILE_SIZE / 4 + (SCALAR), oxygen_bar.width - (player.oxygen / MAX_OXYGEN * oxygen_bar.width), TILE_SIZE / 2}, RED);
 }
 
 // Gameplay Screen Unload logic

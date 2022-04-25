@@ -36,18 +36,26 @@ static int finishScreen = 0;
 // Ending Screen Functions Definition
 //----------------------------------------------------------------------------------
 
+Music credits;
+
 // Ending Screen Initialization logic
 void InitEndingScreen(void)
 {
     // TODO: Initialize ENDING screen variables here!
     framesCounter = 0;
     finishScreen = 0;
+    credits = LoadMusicStream("resources/music/Credits-Song.wav");
+    PlayMusicStream(credits);
 }
 
 // Ending Screen Update logic
 void UpdateEndingScreen(void)
 {
     // TODO: Update ENDING screen variables here!
+    if (!IsMusicStreamPlaying(credits)) {
+        PlayMusicStream(credits);
+    }
+    UpdateMusicStream(credits);
 
     // Press enter or tap to return to TITLE screen
     if (IsKeyPressed(KEY_ENTER) || IsGestureDetected(GESTURE_TAP))
@@ -61,9 +69,8 @@ void UpdateEndingScreen(void)
 void DrawEndingScreen(void)
 {
     // TODO: Draw ENDING screen here!
-    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), BLUE);
-    DrawTextEx(font, "ENDING SCREEN", (Vector2){ 20, 10 }, font.baseSize*3, 4, DARKBLUE);
-    DrawText("PRESS ENTER or TAP to RETURN to TITLE SCREEN", 60, 220, 20, DARKBLUE);
+    DrawTextEx(font, "THANK YOU FOR PLAYING", (Vector2){ 20, 10 }, font.baseSize*3, 4, ORANGE);
+    DrawText("PRESS ENTER or TAP to RETURN to TITLE SCREEN", 60, 220, 20, ORANGE);
 }
 
 // Ending Screen Unload logic

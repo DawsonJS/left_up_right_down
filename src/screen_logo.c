@@ -57,8 +57,8 @@ void InitLogoScreen(void)
     framesCounter = 0;
     lettersCount = 0;
 
-    logoPositionX = GetScreenWidth()/2 - 128;
-    logoPositionY = GetScreenHeight()/2 - 128;
+    logoPositionX = (GetScreenWidth() / 2) - 128;
+    logoPositionY = (GetScreenHeight() / 2)- 128;
 
     topSideRecWidth = 16;
     leftSideRecHeight = 16;
