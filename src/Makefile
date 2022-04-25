@@ -29,16 +29,16 @@
 PLATFORM              ?= PLATFORM_DESKTOP
 
 # Define project variables
-PROJECT_NAME          ?= raylib_game
+PROJECT_NAME          ?= left_up_right_down
 PROJECT_VERSION       ?= 1.0
 PROJECT_BUILD_PATH    ?= .
 
-RAYLIB_PATH           ?= /home/dee/docs/builds/raylib
+RAYLIB_PATH           ?= /Users/dawsonschraiber/Documents/builds/raylib
 
 # Locations of raylib.h and libraylib.a/libraylib.so
 # NOTE: Those variables are only used for PLATFORM_OS: LINUX, BSD
-RAYLIB_INCLUDE_PATH   ?= /home/dee/docs/builds/raylib/src
-RAYLIB_LIB_PATH       ?= /home/dee/docs/builds/raylib/src
+RAYLIB_INCLUDE_PATH   ?= /Users/dawsonschraiber/Documents/builds/raylib/src
+RAYLIB_LIB_PATH       ?= /Users/dawsonschraiber/Documents/builds/raylib/src
 
 # Library type compilation: STATIC (.a) or SHARED (.so/.dll)
 RAYLIB_LIBTYPE        ?= STATIC
@@ -129,7 +129,7 @@ RAYLIB_RELEASE_PATH 	?= $(RAYLIB_PATH)/src
 
 ifeq ($(PLATFORM),PLATFORM_WEB)
     # Emscripten required variables
-    EMSDK_PATH         ?= /home/dee/docs/builds/emsdk
+    EMSDK_PATH         ?= /Users/dawsonschraiber/Documents/builds/emsdk
     EMSCRIPTEN_PATH    ?= $(EMSDK_PATH)/upstream/emscripten
     CLANG_PATH          = $(EMSDK_PATH)/upstream/bin
     PYTHON_PATH         = $(EMSDK_PATH)/python/3.9.2-1_64bit
@@ -373,10 +373,11 @@ endif
 # Define source code object files required
 #------------------------------------------------------------------------------------------------
 PROJECT_SOURCE_FILES ?= \
-    raylib_game.c \
+    game.c \
     screen_logo.c \
     screen_title.c \
     screen_options.c \
+	rooms.c \
     screen_gameplay.c \
     screen_ending.c
 
@@ -433,7 +434,7 @@ ifeq ($(PLATFORM),PLATFORM_DRM)
 	rm -fv *.o
 endif
 ifeq ($(PLATFORM),PLATFORM_WEB)
-	del *.o *.html *.js
+	rm *.o *.html *.js
 endif
 	@echo Cleaning done
 

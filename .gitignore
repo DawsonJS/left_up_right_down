@@ -1,4 +1,3 @@
 src/*.o
-src/raylib_game.html
-src/raylib_game.data
-src/raylib_game.js
+src/left_up_right_down*
+*DS_Store*

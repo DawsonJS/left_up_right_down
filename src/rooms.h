@@ -1,10 +1,13 @@
 #ifndef ROOMS_H
 #define ROOMS_H
 
+#include "raylib.h"
+
 #define SCALAR 2
 #define TILE_SIZE 32
 #define ROOM_SIZE 10
 #define NUM_ROOMS 2
+#define BACKGROUND_SIZE 64
 
 typedef enum _TileType {
     AIR = 0,
@@ -21,26 +24,19 @@ typedef struct _Tile {
     TileType type;
 } Tile;
 
-TileType room_tile[NUM_ROOMS][ROOM_SIZE][ROOM_SIZE] = {{1, 2, 2, 1, 1, 1, 1, 1, 1, 1,
-                                                        1, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-                                                        1, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-                                                        1, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-                                                        3, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-                                                        3, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-                                                        1, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-                                                        1, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-                                                        1, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-                                                        1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-                                                       {1, 1, 3, 3, 1, 1, 1, 1, 1, 1,
-                                                        1, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-                                                        1, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-                                                        1, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-                                                        1, 0, 0, 0, 0, 0, 0, 0, 0, 2,
-                                                        1, 0, 1, 1, 1, 1, 1, 0, 0, 2,
-                                                        1, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-                                                        1, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-                                                        1, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-                                                        1, 1, 1, 1, 1, 1, 1, 1, 1, 1}};
+typedef struct _Room {
+    TileType tiles[ROOM_SIZE][ROOM_SIZE];
+    Vector2 start;
+    int background[ROOM_SIZE * TILE_SIZE / BACKGROUND_SIZE][ROOM_SIZE * TILE_SIZE / BACKGROUND_SIZE];
+    int rotations;
+} Room;
+
+
+bool IsSolid(TileType tile);
+bool IsDeath(TileType tile);
+
+int LoadRoom(Room* room, int room_num);
+void RotateRoom(Room* room);
 
 #endif
 
