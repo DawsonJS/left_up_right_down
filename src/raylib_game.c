@@ -14,9 +14,6 @@
 
 #include "raylib.h"
 #include "screens.h"    // NOTE: Declares global (extern) variables and screens functions
-#define PHYSAC_IMPLEMENTATION
-#define PHYSAC_NO_THREADS
-#include "physac.h"
 
 #if defined(PLATFORM_WEB)
     #include <emscripten/emscripten.h>
@@ -34,8 +31,8 @@ Sound fxCoin = { 0 };
 //----------------------------------------------------------------------------------
 // Local Variables Definition (local to this module)
 //----------------------------------------------------------------------------------
-static const int screenWidth = 256;
-static const int screenHeight = 256;
+static const int screenWidth = TILE_SIZE * ROOM_SIZE;
+static const int screenHeight = TILE_SIZE * ROOM_SIZE;
 
 // Required variables to manage screen transitions (fade-in, fade-out)
 static float transAlpha = 0.0f;
@@ -65,19 +62,13 @@ int main(void)
     SetConfigFlags(FLAG_MSAA_4X_HINT);
     InitWindow(screenWidth, screenHeight, "raylib game template");
 
-    // InitAudioDevice();      // Initialize audio device
-    InitPhysics();
+    InitAudioDevice();      // Initialize audio device
 
     // Load global data (assets that must be available in all screens, i.e. font)
     font = LoadFont("resources/mecha.png");
-    music = LoadMusicStream("resources/ambient.ogg");
-    fxCoin = LoadSound("resources/coin.wav");
-
-    SetMusicVolume(music, 1.0f);
-    PlayMusicStream(music);
 
     // Setup and init first screen
-    currentScreen = TITLE;
+    currentScreen = LOGO;
     InitTitleScreen();
 
 #if defined(PLATFORM_WEB)
@@ -107,7 +98,6 @@ int main(void)
 
     // Unload global data loaded
     UnloadFont(font);
-    UnloadMusicStream(music);
     UnloadSound(fxCoin);
 
     CloseAudioDevice();     // Close audio context

@@ -32,6 +32,9 @@
 static int framesCounter = 0;
 static int finishScreen = 0;
 
+Texture2D logo;
+Music titleMusic;
+
 //----------------------------------------------------------------------------------
 // Title Screen Functions Definition
 //----------------------------------------------------------------------------------
@@ -40,17 +43,23 @@ static int finishScreen = 0;
 void InitTitleScreen(void)
 {
     // TODO: Initialize TITLE screen variables here!
-    framesCounter = 0;
-    finishScreen = 0;
+    Image logo_image = LoadImage("resources/art/TitleCard.png");
+    titleMusic = LoadMusicStream("resources/music/TitleSong.wav");
+    logo = LoadTextureFromImage(logo_image);
+    PlayMusicStream(titleMusic);
 }
 
 // Title Screen Update logic
 void UpdateTitleScreen(void)
 {
     // TODO: Update TITLE screen variables here!
+    if (!IsMusicStreamPlaying(titleMusic)) {
+        PlayMusicStream(titleMusic);
+    }
+    UpdateMusicStream(titleMusic);
 
     // Press enter or tap to change to GAMEPLAY screen
-    if (IsKeyPressed(KEY_ENTER) || IsGestureDetected(GESTURE_TAP))
+    if (IsKeyPressed(KEY_SPACE) || IsGestureDetected(GESTURE_TAP))
     {
         //finishScreen = 1;   // OPTIONS
         finishScreen = 2;   // GAMEPLAY
@@ -61,20 +70,20 @@ void UpdateTitleScreen(void)
 // Title Screen Draw logic
 void DrawTitleScreen(void)
 {
-    // TODO: Draw TITLE screen here!
-    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), GREEN);
-    DrawTextEx(font, "TITLE SCREEN", (Vector2){ 20, 10 }, font.baseSize*3, 4, DARKGREEN);
-    DrawText("PRESS ENTER or TAP to JUMP to GAMEPLAY SCREEN", 60, 220, 20, DARKGREEN);
+    DrawTextureRec(logo, (Rectangle){0.0f, 0.0f, logo.width, logo.height}, (Vector2){0.0f, 0.0f}, WHITE);
 }
 
 // Title Screen Unload logic
 void UnloadTitleScreen(void)
 {
     // TODO: Unload TITLE screen variables here!
+    StopMusicStream(titleMusic);
 }
 
 // Title Screen should finish?
 int FinishTitleScreen(void)
 {
+    // UnloadMusicStream(titleMusic);
+    // UnloadTexture(logo);
     return finishScreen;
 }
